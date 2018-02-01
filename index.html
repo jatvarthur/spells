@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="user-scalable=0, initial-scale=1,minimum-scale=1, maximum-scale=1, width=device-width, minimal-ui=1">
+    <title>Swords&Spells</title>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script src="js/lib/underscore.min.js"></script>
+    <script src="js/lib/sprintf.min.js"></script>
+    <script src="js/lib/phaser.min.js"></script>
+    <script src="js/domain/board.js"></script>
+    <script src="js/domain/roster.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/states/init.js"></script>
+    <script src="js/states/load.js"></script>
+    <script src="js/states/main.js"></script>
+    <script src="js/ui/unit_info_window.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css?family=Barlow+Condensed');
+
+        body { padding: 0; margin: 0; background: black; }
+        #ph_game { margin: 0 auto; width: 1280px; }
+        #unit_info { display: none; width: 150px; height: 150px; padding: 0.5em; background: whitesmoke; position: absolute; }
+
+        .barlow-condensed {
+            font-family: 'Barlow Condensed', sans-serif;
+            visibility: hidden;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div id="unit_info">
+        <table>
+            <tr><th>Unit:</th><td class="title"></td></tr>
+            <tr><th>HP:</th><td class="hp"></td></tr>
+            <tr><th>Speed:</th><td class="speed"></td></tr>
+            <tr><th>Attack:</th><td class="attack"></td></tr>
+            <tr><th>Mana:</th><td class="mana"></td></tr>
+            <tr><td class="buttons" colspan="2"></td></tr>
+        </table>
+    </div>
+    <div id="ph_game"></div>
+    <p class="barlow-condensed">.</p>
+</body>
+
+</html>
