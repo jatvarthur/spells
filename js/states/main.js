@@ -1,5 +1,9 @@
 ;(function() {
 
+    // imports
+    var Ability = Domain.Scripts.Ability;
+    var Action = Domain.Scripts.Action;
+
     // game sate machine
     var State = {
         UNIT_SELECT: 1,
@@ -7,96 +11,6 @@
         UNIT_ABILITY: 3,
         ROUND_END: 4,
         BATTLE_OVER: 15
-    };
-
-    // scripts for abilities
-    var Ability = {
-        Fireball: function(ability, unit, tile) {
-            var bfW = this.board.W, bfH = this.board.H;
-
-            for (var dj = -ability.radius; dj <= ability.radius; ++dj) {
-                var j = tile._go.j + dj;
-                if (j < 0 || j >= bfH) continue;
-                for (var di = -ability.radius; di <= ability.radius; ++di) {
-                    var i = tile._go.i + di;
-                    if (i < 0 || i >= bfW) continue;
-                    var ci = (j)*bfW+(i);
-                    if (this.board[ci]._unit) {
-                        this._dealDamage(unit, this.board[ci]._unit, ability.damage);
-                    } else {
-                        this._showTween(i, j, "-" + ability.damage, this.STYLE_TWEEN_DAMAGE);
-                    }
-                }
-            }
-        },
-
-        // lightning arrow, damages enemy
-        LightningArrow: function(ability, unit, tile) {
-            this._dealDamage(unit, tile._unit, ability.damage);
-        },
-
-        // speeds up target unit
-        Windfury: function(ability, unit, tile) {
-            this._applyEffect(ability, tile._unit, tile);
-        },
-
-        // slows down target unit
-        Bogfoot: function(ability, unit, tile) {
-            this._applyEffect(ability, tile._unit, tile);
-        },
-
-        // raises unit attack
-        Frenzy: function(ability, unit, tile) {
-            this._applyEffect(ability, tile._unit, tile);
-        },
-
-        // lowers unit attack
-        Pacifism: function(ability, unit, tile) {
-            this._applyEffect(ability, tile._unit, tile);
-        }
-
-    };
-
-    // what a unit can do
-    // all executes are borrowed
-    //   this - stateMain, action - stateMain._activeAction
-    var Action = {
-        NONE: {
-            execute: function() { /* noop*/ }
-        },
-
-        MOVE: {
-            execute: function(action) {
-                this.board.place(action.moveTile._go.i, action.moveTile._go.j, action.unit);
-            }
-        },
-
-        MELEE_ATTACK: {
-            execute: function(action) {
-                this.board.place(action.moveTile._go.i, action.moveTile._go.j, action.unit);
-                // damage
-                var unit = action.unit,
-                    target = action.targetTile._unit;
-                this._dealDamage(unit, target, unit._go.meleeAttack);
-                if (target._go.hp > 0 && target._go.meleeAttack)
-                    this._dealDamage(target, unit, target._go.meleeAttack);
-            }
-        },
-
-        RANGED_ATTACK: {
-            execute: function() { /* noop*/ }
-        },
-
-        ABILITY: {
-            execute: function(action) {
-                // pay for cast
-                action.unit._go.mana -= action.ability.mana;
-                // find caster script and run it
-                var script = Ability[action.ability._name];
-                if (script)
-                    script.call(this, action.ability, action.unit, action.targetTile);
-            }
-        }
     };
 
     var stateMain = {
@@ -121,59 +35,8 @@
 
             this.background = game.add.sprite(0, 0, "field_background");
 
-            this.board = [];
-            this.board.W = 14;
-            this.board.H = 10;
-
-            this.board._tile = {
-                w: 78, h: 67, m: 4
-            };
-
-            this.board.place = function(i, j, obj) {
-                var t = this._tile;
-
-                obj.x = t.ox + t.w/2 + i * (t.w + t.m);
-                obj.y = t.oy - j * (t.h + t.m);
-
-                if (obj._go.i >= 0) {
-                    this[obj._go.j * this.W + obj._go.i]._unit = null;
-                }
-
-                obj._go.i = i;
-                obj._go.j = j;
-
-                this[j * this.W + i]._unit = obj;
-            };
-
-            this.board.remove = function(obj) {
-                if (obj._go.i >= 0) {
-                    this[obj._go.j * this.W + obj._go.i]._unit = null;
-                }
-                obj.destroy();
-            };
-
-            var bfW = this.board.W, bfH = this.board.H;
-            var t = this.board._tile;
-
-            var totalw = bfW * t.w + (bfW - 1) * t.m;
-            this.board._tile.ox = (game.world.width - totalw) / 2;
-            this.board._tile.oy = (game.world.height - this.board._tile.ox);
-
-            for (var j = 0; j < bfH; ++j) {
-                for (var i = 0; i < bfW; ++i) {
-                    var sq = game.add.sprite(
-                        t.ox + i * (t.w + t.m),
-                        t.oy - j * (t.h + t.m),
-                        "field_square");
-                    sq.anchor.set(0.0, 1.0);
-                    sq.inputEnabled = true;
-                    sq.events.onInputOver.add(this._sqMouseOver, this);
-                    sq.events.onInputOut.add(this._sqMouseOut, this);
-                    sq.events.onInputDown.add(this._sqMouseDown, this);
-                    sq._go = { i: i, j: j };
-                    this.board[j * bfW + i] = sq;
-                }
-            }
+            this.board = this._createBoard();
+            this._placeSquares();
 
             this.units = [];
             this._createUnit(Domain.Data.Units.Mage, 1, 2, 4, {
@@ -196,6 +59,69 @@
             this._createUnit(Domain.Data.Units.Pikeman, 2, 12, 8);
 
             this._buildInitiativeList();
+        }
+
+        , _createBoard: function() {
+            var board = [];
+            board.W = 14;
+            board.H = 10;
+
+            board._tile = {
+                w: 78, h: 67, m: 4
+            };
+
+            var bfW = board.W, bfH = board.H;
+            var t = board._tile;
+
+            var totalw = bfW * t.w + (bfW - 1) * t.m;
+            board._tile.ox = (game.world.width - totalw) / 2;
+            board._tile.oy = (game.world.height - board._tile.ox);
+
+
+            board.place = function(i, j, obj) {
+                var t = this._tile;
+
+                obj.x = t.ox + t.w/2 + i * (t.w + t.m);
+                obj.y = t.oy - j * (t.h + t.m);
+
+                if (obj._go.i >= 0) {
+                    this[obj._go.j * this.W + obj._go.i]._unit = null;
+                }
+
+                obj._go.i = i;
+                obj._go.j = j;
+
+                this[j * this.W + i]._unit = obj;
+            };
+
+            board.remove = function(obj) {
+                if (obj._go.i >= 0) {
+                    this[obj._go.j * this.W + obj._go.i]._unit = null;
+                }
+                obj.destroy();
+            };
+
+            return board;
+        }
+
+        , _placeSquares: function () {
+            var bfW = this.board.W, bfH = this.board.H;
+            var t = this.board._tile;
+            for (var j = 0; j < bfH; ++j) {
+                for (var i = 0; i < bfW; ++i) {
+                    var sq = game.add.sprite(
+                        t.ox + i * (t.w + t.m),
+                        t.oy - j * (t.h + t.m),
+                        "field_square");
+                    sq.anchor.set(0.0, 1.0);
+                    sq.inputEnabled = true;
+                    sq.events.onInputOver.add(this._sqMouseOver, this);
+                    sq.events.onInputOut.add(this._sqMouseOut, this);
+                    sq.events.onInputDown.add(this._sqMouseDown, this);
+                    sq._go = { i: i, j: j };
+                    this.board[j * bfW + i] = sq;
+                }
+            }
         }
 
         , _createUnit: function(proto, owner, i, j, opts) {
